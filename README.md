@@ -1,2 +1,2 @@
 # mopidy-web-commander
-A commander based on HTML5 and mattdiamond/Recordjs recording command audio and uploading it to Bluemix.
+A commander based on HTML5 and [mattdiamond/Recorderjs](https://github.com/mattdiamond/Recorderjs) recording command audio and uploading it to Bluemix.
