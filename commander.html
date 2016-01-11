@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="Author" Content="Chih-Yung Liang">
+
+	<title>Mopidy Jukebox Commander</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+	<style>
+		#record-btn {
+			position: relative;
+			background-color: none;
+			width: 100%;
+			padding-top: 100%;
+			margin-top: 50%;
+			margin-bottom: 40%;
+		}
+
+		#record-btn button {
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			margin: 0;
+			padding: 0;
+			border: 0;
+			border-radius: 50%;
+			color: white;
+		}
+
+		#record-btn #start-btn {
+			background-color: red;
+		}
+
+		#record-btn #stop-btn {
+			background-color: #BB0000;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="page-header text-center">
+			<h1>Mopidy Jukebox Commander</h1>
+		</div>
+
+		<div class="row">
+			<div class="col-md-2 col-md-offset-5 col-sm-4 col-sm-offset-4 col-xs-8 col-xs-offset-2">
+				<div id="record-btn">
+					<button type="button" id="start-btn">Record</button>
+					<button type="button" id="stop-btn">Recording...</button>
+				</div>
+			</div>
+		</div>
+
+		<p class="text-center" id="action-area">
+			<button type="button" id="upload-btn" class="btn btn-success">Upload</button>
+			<button type="button" id="reset-btn" class="btn btn-default">Reset</button>
+			<br>
+			<span id="uploading-text" class="text-danger">Uploading...</span>
+		</p>
+	</div>
+
+	<script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+	<script src="https://rawgit.com/mattdiamond/Recorderjs/master/dist/recorder.js"></script>
+	<script>
+		var audio_context;
+		var recorder;
+
+		function startUserMedia(stream) {
+			var input = audio_context.createMediaStreamSource(stream);
+			console.log('Media stream created.');
+
+			// Uncomment if you want the audio to feedback directly
+			//input.connect(audio_context.destination);
+			//console.log('Input connected to audio context destination.');
+
+			recorder = new Recorder(input);
+			console.log('Recorder initialised.');
+		}
+
+		$(document).ready(function() {
+
+			$('#start-btn').click(function startRecording() {
+				recorder && recorder.record();
+				$(this).attr('disabled', 'disabled').fadeOut();
+				$('#stop-btn').removeAttr('disabled').fadeIn();
+				console.log('Recording...');
+			});
+
+			$('#stop-btn').click(function stopRecording() {
+				recorder && recorder.stop();
+				$(this).attr('disabled', 'disabled').fadeOut();
+				$('#start-btn').fadeIn();
+				$('#action-area').slideDown();
+				console.log('Stopped recording.');
+			});
+
+			$('#reset-btn').click(function clearRecording() {
+				recorder.clear();
+				$('#start-btn').removeAttr('disabled')
+				$('#action-area').slideUp();
+			});
+
+			$('#upload-btn').click(function createDownloadLink() {
+				$('#action-area button').attr('disabled', 'disabled');
+				$('#uploading-text').slideDown();
+
+				recorder && recorder.exportWAV(function exportWav(blob) {
+					$.ajax({
+						contentType: 'audio/wav',
+						data: blob,
+						method: 'POST',
+						processData: false,
+						url: '/recognize',
+						success:
+							function afterUpload(data, status) {
+								if (status == 'success') {
+									alert('Upload successfully.');
+								} else {
+									alert('Upload failed.');
+								}
+
+								$('#action-area button').removeAttr('disabled');
+								$('#uploading-text').slideUp();
+							}
+					});
+				});
+			});
+
+			$('#stop-btn').hide();
+			$('#action-area').hide();
+			$('#uploading-text').hide();
+
+			try {
+				// webkit shim
+				window.AudioContext = window.AudioContext || window.webkitAudioContext;
+				navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia;
+				window.URL = window.URL || window.webkitURL;
+
+				audio_context = new AudioContext;
+				console.log('Audio context set up.');
+				console.log('navigator.getUserMedia ' + (navigator.getUserMedia ? 'available.' : 'not present!'));
+			} catch (e) {
+				alert('No web audio support in this browser!');
+			}
+
+			navigator.getUserMedia({audio: true}, startUserMedia, function(e) {
+				console.log('No live audio input: ' + e);
+			});
+		});
+	</script>
+</body>
+</html>
